@@ -17,7 +17,7 @@ func dropDB(t *testing.T, dbname string) {
 	ctx := context.Background()
 	conn, err := pgx.Connect(ctx, os.Getenv("PG_CONN"))
 	require.NoError(t, err)
-	_, err = conn.Exec(ctx, "DROP DATABASE "+dbname)
+	_, err = conn.Exec(ctx, "DROP DATABASE "+pgx.Identifier{dbname}.Sanitize())
 	require.NoError(t, err)
 	require.NoError(t, conn.Close(ctx))
 }
@@ -395,7 +395,7 @@ func TestAdapter(t *testing.T) {
 func TestCustomSchema(t *testing.T) {
 	connStr := os.Getenv("PG_CONN")
 	require.NotEmpty(t, connStr, "must run with non-empty PG_CONN")
-	defer dropDB(t, "test_pgxadapter")
+	defer dropDB(t, "TestPgxAdapter")
 	a, err := NewAdapter(connStr, WithDatabase("TestPgxAdapter"), WithSchema("MySchema"), WithTableName("TestCasbinRules"))
 	require.NoError(t, err)
 	defer a.Close()
@@ -415,7 +415,7 @@ func TestCustomSchema(t *testing.T) {
 	)
 
 	// nothing found in public schema
-	a, err = NewAdapter(connStr, WithDatabase("test_pgxadapter"))
+	a, err = NewAdapter(connStr, WithDatabase("TestPgxAdapter"))
 	require.NoError(t, err)
 	defer a.Close()
 	e3, err := casbin.NewEnforcer("testdata/rbac_model.conf", a)
