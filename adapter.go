@@ -429,7 +429,7 @@ func (a *Adapter) createTable() error {
 	if a.schema != "" {
 		ctx, cancel := context.WithTimeout(context.Background(), a.timeout)
 		defer cancel()
-		if _, err := a.pool.Exec(ctx, fmt.Sprintf(`CREATE SCHEMA IF NOT EXISTS %q`, a.schema)); err != nil {
+		if _, err := a.pool.Exec(ctx, fmt.Sprintf(`CREATE SCHEMA IF NOT EXISTS %s`, pgx.Identifier{a.schema}.Sanitize())); err != nil {
 			return err
 		}
 	}
