@@ -426,3 +426,31 @@ func TestCustomSchema(t *testing.T) {
 		e3.GetPolicy(),
 	)
 }
+
+func TestCustomTableErrorInPublic(t *testing.T) {
+	connStr := os.Getenv("PG_CONN")
+	require.NotEmpty(t, connStr, "must run with non-empty PG_CONN")
+	defer dropDB(t, "TestPgxAdapterQuoteError")
+
+	a, err := NewAdapter(connStr, WithDatabase("TestPgxAdapterQuoteError"), WithTableName("testcasbinrules"))
+	require.NoError(t, err)
+	a.Close()
+
+	b, err := NewAdapter(connStr, WithDatabase("TestPgxAdapterQuoteError"), WithTableName("TestCasbinRules"))
+	require.Error(t, err)
+	b.Close()
+}
+
+func TestCustomTableErrorInSchema(t *testing.T) {
+	connStr := os.Getenv("PG_CONN")
+	require.NotEmpty(t, connStr, "must run with non-empty PG_CONN")
+	defer dropDB(t, "TestPgxAdapterQuoteError")
+
+	a, err := NewAdapter(connStr, WithDatabase("TestPgxAdapterQuoteError"), WithSchema("MySchema"), WithTableName("testcasbinrules"))
+	require.NoError(t, err)
+	a.Close()
+
+	b, err := NewAdapter(connStr, WithDatabase("TestPgxAdapterQuoteError"), WithSchema("MySchema"), WithTableName("TestCasbinRules"))
+	require.Error(t, err)
+	b.Close()
+}

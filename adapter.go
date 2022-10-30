@@ -54,8 +54,13 @@ func NewAdapter(conn interface{}, opts ...Option) (*Adapter, error) {
 		return nil, fmt.Errorf("pgxadapter.NewAdapter: %v", err)
 	}
 	a.pool = pool
+	if err := a.checkForQuotingIssue(); err != nil {
+		a.Close()
+		return nil, fmt.Errorf("pgxadapter.NewAdapter: %v", err)
+	}
 	if !a.skipTableCreate {
 		if err := a.createTable(); err != nil {
+			a.Close()
 			return nil, fmt.Errorf("pgxadapter.NewAdapter: %v", err)
 		}
 	}
@@ -423,6 +428,34 @@ func (a *Adapter) Close() {
 	if a != nil && a.pool != nil {
 		a.pool.Close()
 	}
+}
+
+func (a *Adapter) checkForQuotingIssue() error {
+	if a.tableName == strings.ToLower(a.tableName) {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), a.timeout)
+	defer cancel()
+
+	schema := a.schema
+	if schema == "" {
+		schema = "public"
+	}
+	rows, err := a.pool.Query(ctx, `SELECT FROM information_schema.tables WHERE table_schema = $1 AND table_name = $2`, schema, strings.ToLower(a.tableName))
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		return nil
+	}
+
+	return fmt.Errorf(
+		"table name case missmatch error: custom table name %s was provided, found existing table %s: custom name should match exiting table.",
+		a.tableName, strings.ToLower(a.tableName),
+	)
 }
 
 func (a *Adapter) createTable() error {
